@@ -252,18 +252,8 @@
                 </div>
             </div>
             <button class="btn btn-primary restart-btn" id="restartFromResult">🔄 重新探索</button>
-            <button class="btn btn-outline restart-btn" id="viewHistoryBtn" style="margin-top: 10px;">📜 查看历史记录</button>
         </div>
         <div class="footnote">—— 成分流动，结果仅供娱乐 ——</div>
-    </div>
-
-    <!-- 历史记录弹窗 -->
-    <div id="historyModal" class="hidden" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; display: flex; align-items: center; justify-content: center;">
-        <div style="background: rgba(255, 252, 245, 0.95); backdrop-filter: blur(18px); border-radius: 28px; padding: 2rem; max-width: 600px; width: 90%; max-height: 80vh; overflow-y: auto; box-shadow: 0 25px 40px -16px rgba(100, 70, 40, 0.3);">
-            <h2 style="text-align: center; color: #5e4b3c; margin-bottom: 1.5rem;">📜 测试历史记录</h2>
-            <div id="historyContent"></div>
-            <button class="btn btn-primary" id="closeHistoryBtn" style="width: 100%; margin-top: 1rem;">关闭</button>
-        </div>
     </div>
 </div>
 
@@ -305,7 +295,7 @@
            { text: "感觉你是哪种吃带骨头的（如烤鸭拌饭）吐桌子上不带走的。", dimension: 0 },
             { text: "在深夜决定明早B楼的早八一定早起，但最后一切如常 卡点进入。", dimension: 0 },
 
-            { text: "该选哪个呢？完全不符合?是比较不符合？还是一般/不确定？肯定是比较符合！一定是完全符合！保院人不为难保院人 随便捏 没关系捏>_<。", dimension:5},
+            { text: "该选哪个呢？完全不符合?是比较不符合？还是一般/不确定？肯定是比较符合！一定是完全符合！保院人不为难保院人 随便捏 没关系捏>_<。", dimension:-1},
             // 恋爱值 (1)  7-12题
             { text: "为了陪爱慕对象聊天，我可以推迟当晚的复习计划或小组作业或“我”本来要干的事。", dimension: 1 },
             { text: "我认为大学恋爱就应该不求结果，只要当下足够轰轰烈烈就好。", dimension: 1 },
@@ -322,7 +312,7 @@
             { text: "我熟悉三个餐厅以及小吃街的每个好吃的摊位，并且还会推荐给同学", dimension: 2 },
           //  { text: "朋友约我学习我可能犹豫，但约我干饭（尤其是校外的饭）我永远有空。", dimension: 2 },
 
-            { text: "你觉得如意厅的冰激凌比一餐的冰激凌的好吃？", dimension:5},
+            { text: "你觉得如意厅的冰激凌比一餐的冰激凌的好吃？", dimension:-1},
             // 事业值 (3)  19-24题
             { text: "假期最后一天，我通常会感到焦虑，因为觉得别人都在实习/考证/打比赛，只有我在玩。", dimension: 3 },
            // { text: "我的手机相册里，拍的课堂笔记照片数量远多于自拍和风景照。", dimension: 3 },
@@ -456,63 +446,10 @@
             dimensionBars.innerHTML = html;
         }
 
-        // API 基础地址 - 本地开发使用 localhost，生产环境使用 Render 地址
-        const API_BASE_URL = window.location.hostname === 'localhost' 
-            ? 'http://localhost:5000' 
-            : 'https://你的-render-域名.onrender.com';
-
-        // 保存到本地存储
-        function saveToLocalStorage(personality, scores) {
-            const results = JSON.parse(localStorage.getItem('testResults') || '[]');
-            results.push({
-                code: personality.code,
-                name: personality.name,
-                nickname: personality.nickname,
-                description: personality.desc,
-                scores: scores,
-                answers: answers,
-                created_at: new Date().toISOString()
-            });
-            localStorage.setItem('testResults', JSON.stringify(results));
-            console.log('结果已保存到本地存储');
-        }
-
-        async function saveResultToServer(personality, scores) {
-            // 先保存到本地
-            saveToLocalStorage(personality, scores);
-            
-            // 如果有后端，再尝试保存到服务器
-            if (window.location.hostname !== 'localhost') {
-                try {
-                    const response = await fetch(`${API_BASE_URL}/api/results`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            code: personality.code,
-                            name: personality.name,
-                            nickname: personality.nickname,
-                            description: personality.desc,
-                            scores: scores,
-                            answers: answers
-                        })
-                    });
-                    const data = await response.json();
-                    if (data.success) {
-                        console.log('结果已保存到服务器，ID:', data.id);
-                    }
-                } catch (error) {
-                    console.log('服务器保存失败，仅保存到本地:', error);
-                }
-            }
-        }
-
         function showResult() {
             let personality, scores;
             if (forcedPersonality) {
                 personality = forcedPersonality;
-                scores = [50, 50, 50, 50]; // 强制结果时使用默认分数
             } else {
                 scores = calculateScores();
                 personality = getTypeFromScores(scores);
@@ -528,9 +465,6 @@
             resultDesc.textContent = personality.desc;
             testSection.classList.add('hidden');
             resultSection.classList.remove('hidden');
-            
-            // 保存结果到后端
-            saveResultToServer(personality, scores);
         }
 
         function resetTest() {
@@ -554,51 +488,6 @@
             else { currentIndex++; renderQuestion(); }
         });
         restartFromResult.addEventListener('click', resetTest);
-
-        // 历史记录功能
-        const viewHistoryBtn = document.getElementById('viewHistoryBtn');
-        const historyModal = document.getElementById('historyModal');
-        const historyContent = document.getElementById('historyContent');
-        const closeHistoryBtn = document.getElementById('closeHistoryBtn');
-
-        function showHistory() {
-            const results = JSON.parse(localStorage.getItem('testResults') || '[]');
-            
-            if (results.length === 0) {
-                historyContent.innerHTML = '<p style="text-align: center; color: #7f6e5d; padding: 2rem;">暂无测试记录</p>';
-            } else {
-                let html = '<div style="display: flex; flex-direction: column; gap: 1rem;">';
-                results.reverse().forEach((result, index) => {
-                    const date = new Date(result.created_at).toLocaleString('zh-CN');
-                    html += `
-                        <div style="background: #f8f0e7; padding: 1rem; border-radius: 16px; border: 1px solid #e3d5c7;">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-                                <span style="font-size: 1.5rem; font-weight: 700; color: #6b5a49;">${result.code}</span>
-                                <span style="font-size: 0.8rem; color: #7f6e5d;">${date}</span>
-                            </div>
-                            <div style="font-weight: 600; color: #463a2d; margin-bottom: 0.3rem;">${result.name}</div>
-                            <div style="font-size: 0.85rem; color: #5f4e3e;">
-                                SB:${result.scores[0]} 恋爱:${result.scores[1]} 干饭:${result.scores[2]} 卷王:${result.scores[3]}
-                            </div>
-                        </div>
-                    `;
-                });
-                html += '</div>';
-                historyContent.innerHTML = html;
-            }
-            
-            historyModal.classList.remove('hidden');
-        }
-
-        viewHistoryBtn.addEventListener('click', showHistory);
-        closeHistoryBtn.addEventListener('click', () => {
-            historyModal.classList.add('hidden');
-        });
-        historyModal.addEventListener('click', (e) => {
-            if (e.target === historyModal) {
-                historyModal.classList.add('hidden');
-            }
-        });
 
         renderQuestion();
     })();
